@@ -1,88 +1,70 @@
-
-import os, json, shutil, sys
-from pathlib import Path
 import PySimpleGUI as sg
+import os
+import shutil
+import sys
 
 APP_NAME = "FlightCommander"
-DEFAULT_PROFILES_DIR = Path(__file__).parent / "profiles"
-CONFIG_FILE = Path.home() / ".flightcommander.json"
+APP_VERSION = "1.0.0"
 
-def load_config():
-    if CONFIG_FILE.exists():
-        try:
-            return json.loads(CONFIG_FILE.read_text())
-        except Exception:
-            pass
-    return {"dcs_path": str(Path.home() / "Saved Games" / "DCS" / "Config" / "Input")}
-
-def save_config(cfg):
+# Helper for PyInstaller runtime
+def resource_path(relative_path):
+    """Get absolute path to resource, works for dev and for PyInstaller .exe"""
     try:
-        CONFIG_FILE.write_text(json.dumps(cfg))
-    except Exception as e:
-        sg.popup_error(f"Failed to save config: {e}")
+        base_path = sys._MEIPASS
+    except AttributeError:
+        base_path = os.path.abspath(".")
+    return os.path.join(base_path, relative_path)
 
-def detect_joysticks():
-    # minimal placeholder – you can extend with pywinusb later
-    # We'll just return Logitech for demo
-    return ["Logitech Extreme 3D Pro"]
+# Path where profiles are stored
+profiles_folder = resource_path('profiles')
 
+# List available aircraft profiles
 def list_aircraft():
-    return sorted([p.name for p in DEFAULT_PROFILES_DIR.iterdir() if p.is_dir()])
+    aircraft = []
+    for folder in os.listdir(profiles_folder):
+        folder_path = os.path.join(profiles_folder, folder)
+        if os.path.isdir(folder_path):
+            aircraft.append(folder)
+    return sorted(aircraft)
 
-def apply_mapping(dcs_path, aircraft, joystick):
-    src = DEFAULT_PROFILES_DIR / aircraft / f"{joystick.replace(' ','_')}.diff.lua"
-    if not src.exists():
-        sg.popup_error(f"Profile not found: {src}")
-        return False
-    dest_dir = Path(dcs_path) / aircraft / "joystick"
-    dest_dir.mkdir(parents=True, exist_ok=True)
-    # We don't know device GUID; copy with generic name
-    dest = dest_dir / f"{joystick.replace(' ','_')}.diff.lua"
-    shutil.copy(src, dest)
-    return True
+# GUI Layout
+layout = [
+    [sg.Text(f"FlightCommander {APP_VERSION}", font=("Any", 16))],
+    [sg.Text("Select aircraft:"), sg.Combo(list_aircraft(), key='aircraft')],
+    [sg.Button('Apply Mapping'), sg.Button('Exit')]
+]
 
-def main():
-    cfg = load_config()
-    joysticks = detect_joysticks()
-    aircraft_list = list_aircraft()
+# Main window
+window = sg.Window(APP_NAME, layout)
 
-    layout = [
-        [sg.Text("Joystick:"), sg.Combo(joysticks, key="-JOY-", default_value=joysticks[0] if joysticks else "", size=(30,1))],
-        [sg.Text("Aircraft:"), sg.Listbox(values=aircraft_list, key="-AC-", size=(30,6), select_mode="single")],
-        [sg.Text("DCS Saved Games Input path:"), sg.InputText(cfg["dcs_path"], key="-PATH-", size=(50,1)), sg.FolderBrowse()],
-        [sg.Button("Apply Mapping"), sg.Button("Exit")],
-        [sg.StatusBar("", size=(60,1), key="-STATUS-")]
-    ]
+# Main event loop
+while True:
+    event, values = window.read()
+    if event in (sg.WINDOW_CLOSED, 'Exit'):
+        break
+    if event == 'Apply Mapping':
+        selected_aircraft = values['aircraft']
+        if not selected_aircraft:
+            sg.popup_error("Please select an aircraft!")
+            continue
 
-    window = sg.Window(f"{APP_NAME}", layout, finalize=True)
+        profile_source = os.path.join(profiles_folder, selected_aircraft, "Logitech_Extreme_3D_Pro.diff.lua")
 
-    while True:
-        event, values = window.read()
-        if event in (sg.WIN_CLOSED, "Exit"):
-            break
-        if event == "Apply Mapping":
-            joy = values["-JOY-"]
-            ac_selected = values["-AC-"]
-            if not joy:
-                window["-STATUS-"].update("No joystick selected!")
-                continue
-            if not ac_selected:
-                window["-STATUS-"].update("No aircraft selected!")
-                continue
-            ac = ac_selected[0]
-            dcs_path = values["-PATH-"].strip()
-            if not dcs_path:
-                window["-STATUS-"].update("DCS path not set!")
-                continue
-            ok = apply_mapping(dcs_path, ac, joy)
-            if ok:
-                window["-STATUS-"].update(f"Mapped {joy} -> {ac}")
-            else:
-                window["-STATUS-"].update("Failed!")
+        # Where to copy the profile (you might adjust the destination path later)
+        saved_games_path = os.path.expanduser("~/Saved Games/DCS/Config/Input")
 
-    cfg["dcs_path"] = values["-PATH-"]
-    save_config(cfg)
-    window.close()
+        if not os.path.exists(saved_games_path):
+            os.makedirs(saved_games_path)
 
-if __name__ == "__main__":
-    main()
+        target_folder = os.path.join(saved_games_path, selected_aircraft, "joystick")
+        os.makedirs(target_folder, exist_ok=True)
+
+        profile_target = os.path.join(target_folder, "Logitech_Extreme_3D_Pro.diff.lua")
+
+        try:
+            shutil.copyfile(profile_source, profile_target)
+            sg.popup_ok(f"Mapping applied successfully to {selected_aircraft}!")
+        except Exception as e:
+            sg.popup_error(f"Failed to apply mapping:\n{e}")
+
+window.close()

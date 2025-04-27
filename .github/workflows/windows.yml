@@ -17,8 +17,13 @@ jobs:
     - name: Install Python deps & build standalone EXE
       run: |
         pip install -r requirements.txt
+<<<<<<< HEAD
         pip install pyinstaller      # <<==== ADD THIS LINE
         pyinstaller --name FlightCommander --onefile main.py
+=======
+        pip install pyinstaller
+        pyinstaller --name FlightCommander --onefile --add-data "profiles;profiles" main.py
+>>>>>>> Fix: include profiles folder and correct resource path for EXE build
 
     - name: Install Inno Setup
       run: choco install innosetup -y

@@ -17,6 +17,7 @@ jobs:
     - name: Install Python deps & build standalone EXE
       run: |
         pip install -r requirements.txt
+	pip install pyinstaller
         pyinstaller --name FlightCommander --onefile main.py
 
     - name: Install Inno Setup

@@ -17,6 +17,7 @@ jobs:
     - name: Install Python deps & build standalone EXE
       run: |
         pip install -r requirements.txt
+        pip install --upgrade --extra-index-url https://PySimpleGUI.net/install PySimpleGUI
         pip install pyinstaller
         pyinstaller --name FlightCommander --onefile --add-data "profiles;profiles" main.py
 

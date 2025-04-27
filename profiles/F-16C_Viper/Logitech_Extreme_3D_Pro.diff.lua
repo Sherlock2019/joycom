@@ -1,0 +1,2 @@
+-- Placeholder diff.lua for F-16C_Viper with Logitech Extreme 3D Pro
+-- Add your bindings here

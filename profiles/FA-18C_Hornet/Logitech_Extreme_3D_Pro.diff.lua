@@ -1,0 +1,2 @@
+-- Placeholder diff.lua for FA-18C_Hornet with Logitech Extreme 3D Pro
+-- Add your bindings here

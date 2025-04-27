@@ -1,0 +1,2 @@
+-- Placeholder diff.lua for Su-25T with Logitech Extreme 3D Pro
+-- Add your bindings here
